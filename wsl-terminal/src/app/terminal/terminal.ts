@@ -8,12 +8,11 @@ import { CommandTrackerService } from '../services/command-tracker';
 import { AutocompleteService } from '../services/autocomplete';
 import { CommandHelpService } from '../services/command-help';
 import { CommandHelpPanelComponent } from './command-help-panel';
-import { SuggestionsPanelComponent } from './suggestions-panel';
 import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-terminal',
-  imports: [CommandHelpPanelComponent, SuggestionsPanelComponent],
+  imports: [CommandHelpPanelComponent],
   templateUrl: './terminal.html',
   styleUrl: './terminal.scss'
 })
@@ -155,6 +154,8 @@ export class TerminalComponent implements OnInit, OnDestroy {
       if (this.currentInput.length > 0) {
         this.currentInput = this.currentInput.slice(0, -1);
         this.cursorPosition = Math.max(0, this.cursorPosition - 1);
+        console.log('After backspace:', this.currentInput); // Debug log
+        this.commandTracker.trackInput(`$ ${this.currentInput}`); // Update tracker
         this.websocketService.sendInput(data);
         this.updateCommandHelp();
       }
@@ -165,6 +166,8 @@ export class TerminalComponent implements OnInit, OnDestroy {
     if (data >= ' ') {
       this.currentInput += data;
       this.cursorPosition++;
+      console.log('Current input:', this.currentInput); // Debug log
+      this.commandTracker.trackInput(`$ ${this.currentInput}`); // Update tracker
       this.websocketService.sendInput(data);
       this.updateCommandHelp();
       return;

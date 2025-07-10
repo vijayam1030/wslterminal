@@ -54,5 +54,11 @@
   </mat-sidenav-content>
 </mat-sidenav-container>
 
+<!-- Move suggestions panel outside to avoid overflow issues -->
+<app-suggestions-panel
+  [currentInput]="currentInput"
+  [showSuggestions]="true"
+  (suggestionSelected)="applySuggestion($event)">
+</app-suggestions-panel>
 
 <router-outlet />

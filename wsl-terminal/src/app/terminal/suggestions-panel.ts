@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, HostListener } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AutocompleteService, AutocompleteMatch } from '../services/autocomplete';
 import { CommandHelpService, CommandOption } from '../services/command-help';
@@ -10,7 +10,7 @@ import { CommandHelpService, CommandOption } from '../services/command-help';
   templateUrl: './suggestions-panel.html',
   styleUrl: './suggestions-panel.scss'
 })
-export class SuggestionsPanelComponent implements OnChanges {
+export class SuggestionsPanelComponent implements OnInit, OnChanges {
   @Input() currentInput: string = '';
   @Input() showSuggestions: boolean = true;
   @Output() suggestionSelected = new EventEmitter<string>();
@@ -26,6 +26,11 @@ export class SuggestionsPanelComponent implements OnChanges {
     private commandHelpService: CommandHelpService
   ) {}
 
+  ngOnInit() {
+    // Show some default suggestions on load
+    this.updateSuggestions();
+  }
+
   ngOnChanges(changes: SimpleChanges) {
     if (changes['currentInput']) {
       this.updateSuggestions();
@@ -39,7 +44,20 @@ export class SuggestionsPanelComponent implements OnChanges {
     this.selectedIndex = 0;
 
     if (!this.currentInput.trim()) {
-      this.hasSuggestions = false;
+      // Show popular commands when no input
+      this.commandSuggestions = [
+        { completion: 'ls', display: 'ls', type: 'command', description: 'List directory contents' },
+        { completion: 'cd', display: 'cd', type: 'command', description: 'Change directory' },
+        { completion: 'git', display: 'git', type: 'command', description: 'Distributed version control system' },
+        { completion: 'npm', display: 'npm', type: 'command', description: 'Node.js package manager' },
+        { completion: 'grep', display: 'grep', type: 'command', description: 'Search text patterns in files' }
+      ];
+      this.examples = [
+        'ls -la',
+        'cd ~/Documents',
+        'git status'
+      ];
+      this.hasSuggestions = true;
       return;
     }
 

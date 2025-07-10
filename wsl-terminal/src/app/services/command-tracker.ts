@@ -51,6 +51,10 @@ export class CommandTrackerService {
     return this.currentCommand$.asObservable();
   }
 
+  getCurrentInput() {
+    return this.currentCommand$.asObservable();
+  }
+
   getAISuggestions() {
     return this.aiSuggestions$.asObservable();
   }

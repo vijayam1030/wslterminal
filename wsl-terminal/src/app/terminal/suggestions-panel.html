@@ -1,10 +1,10 @@
-<div class="suggestions-panel" [class.visible]="showSuggestions">
+<div class="suggestions-panel visible">
   <div class="panel-header">
     <div class="panel-title">
       <span class="icon">💡</span>
       <span>Suggestions</span>
     </div>
-    <div class="input-preview" *ngIf="currentInput">{{ currentInput }}</div>
+    <div class="input-preview">{{ currentInput || 'No input yet...' }}</div>
   </div>
   
   <div class="suggestions-content">
@@ -64,6 +64,15 @@
       <div class="no-suggestions-icon">🔍</div>
       <div class="no-suggestions-text">No suggestions found</div>
       <div class="no-suggestions-hint">Try typing a command name</div>
+    </div>
+
+    <!-- Debug info -->
+    <div class="debug-info" style="padding: 10px; background: #333; margin: 10px; border-radius: 4px;">
+      <div style="color: #fff; font-size: 12px;">Debug Info:</div>
+      <div style="color: #7cc7ff; font-size: 11px;">Input: "{{ currentInput }}"</div>
+      <div style="color: #98d982; font-size: 11px;">Commands: {{ commandSuggestions.length }}</div>
+      <div style="color: #ffd700; font-size: 11px;">Options: {{ optionSuggestions.length }}</div>
+      <div style="color: #ffa500; font-size: 11px;">Has Suggestions: {{ hasSuggestions }}</div>
     </div>
 
     <!-- Welcome message -->
