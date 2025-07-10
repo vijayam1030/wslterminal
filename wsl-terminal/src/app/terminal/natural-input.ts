@@ -2,11 +2,12 @@ import { Component, OnInit, ViewChild, ElementRef, Output, EventEmitter } from '
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NaturalLanguageService, CommandTranslation } from '../services/natural-language';
+import { VoiceInputComponent } from '../components/voice-input';
 
 @Component({
   selector: 'app-natural-input',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, VoiceInputComponent],
   templateUrl: './natural-input.html',
   styleUrl: './natural-input.scss'
 })
@@ -151,6 +152,18 @@ export class NaturalInputComponent implements OnInit {
   retryTranslation() {
     this.clearError();
     this.translateOnly();
+  }
+
+  onVoiceTranscriptReady(transcript: string) {
+    this.currentInput = transcript;
+    this.updateSuggestions();
+    this.focusInput();
+  }
+
+  onVoiceExecuteTranscript(transcript: string) {
+    this.currentInput = transcript;
+    this.updateSuggestions();
+    this.translateAndExecute();
   }
 
   private focusInput() {

@@ -7,6 +7,12 @@
     <div class="header-subtitle">Describe what you want to do in plain English</div>
   </div>
 
+  <!-- Voice Input Component -->
+  <app-voice-input 
+    (transcriptReady)="onVoiceTranscriptReady($event)"
+    (executeTranscriptEvent)="onVoiceExecuteTranscript($event)">
+  </app-voice-input>
+
   <div class="input-section">
     <div class="input-wrapper">
       <textarea 
@@ -14,7 +20,7 @@
         [(ngModel)]="currentInput"
         (keydown)="handleKeyDown($event)"
         (input)="onInputChange()"
-        placeholder="Type what you want to do... (e.g., 'list all files', 'create a folder called docs', 'find text files')"
+        placeholder="Type or speak what you want to do... (e.g., 'list all files', 'create a folder called docs', 'find text files')"
         class="natural-input"
         rows="3"
         [disabled]="isProcessing">
