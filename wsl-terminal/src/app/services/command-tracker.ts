@@ -20,6 +20,7 @@ export interface AISuggestion {
 })
 export class CommandTrackerService {
   private currentCommand$ = new BehaviorSubject<string>('');
+  private currentInput$ = new BehaviorSubject<string>('');
   private commandHistory: Command[] = [];
   private aiSuggestions$ = new BehaviorSubject<AISuggestion>({
     explanation: '',
@@ -32,10 +33,20 @@ export class CommandTrackerService {
 
   trackInput(input: string) {
     const currentLine = this.getCurrentCommandLine(input);
+    console.log('Tracking input:', input, 'Extracted line:', currentLine); // Debug
+    
+    // Update current input for suggestions panel
+    this.currentInput$.next(currentLine);
+    
     if (currentLine !== this.currentCommand$.value) {
       this.currentCommand$.next(currentLine);
       this.analyzeCommand(currentLine);
     }
+  }
+  
+  updateCurrentInput(input: string) {
+    console.log('Direct input update:', input); // Debug
+    this.currentInput$.next(input);
   }
 
   executeCommand(command: string) {
@@ -52,7 +63,7 @@ export class CommandTrackerService {
   }
 
   getCurrentInput() {
-    return this.currentCommand$.asObservable();
+    return this.currentInput$.asObservable();
   }
 
   getAISuggestions() {

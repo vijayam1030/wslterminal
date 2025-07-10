@@ -1,8 +1,40 @@
-<div #terminalContainer class="terminal-container"></div>
+<!-- Natural Language Input Mode -->
+<app-natural-input 
+  *ngIf="isNaturalLanguageMode"
+  (commandExecuted)="executeNaturalCommand($event)">
+</app-natural-input>
 
-<app-command-help-panel 
-  [command]="currentCommand"
-  [showHelp]="showCommandHelp"
-  [panelPosition]="helpPanelPosition"
-  (hideHelpEvent)="hideCommandHelp()">
-</app-command-help-panel>
+<!-- Traditional Terminal Mode -->
+<div class="terminal-mode" *ngIf="!isNaturalLanguageMode">
+  <div #terminalContainer class="terminal-container"></div>
+  
+  <app-command-help-panel 
+    [command]="currentCommand"
+    [showHelp]="showCommandHelp"
+    [panelPosition]="helpPanelPosition"
+    (hideHelpEvent)="hideCommandHelp()">
+  </app-command-help-panel>
+</div>
+
+<!-- Mode Toggle -->
+<div class="mode-toggle">
+  <button 
+    class="toggle-btn"
+    [class.active]="!isNaturalLanguageMode"
+    (click)="toggleMode(false)"
+    title="Switch to traditional terminal">
+    💻 Terminal
+  </button>
+  <button 
+    class="toggle-btn"
+    [class.active]="isNaturalLanguageMode"
+    (click)="toggleMode(true)"
+    title="Switch to natural language mode">
+    🗣️ Natural
+  </button>
+</div>
+
+<!-- Terminal Output Display (always visible) -->
+<div class="terminal-output" #terminalOutput>
+  <!-- This will show command outputs in natural language mode -->
+</div>

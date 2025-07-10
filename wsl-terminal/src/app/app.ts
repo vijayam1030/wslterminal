@@ -53,6 +53,7 @@ export class App implements OnInit, OnDestroy {
     // Subscribe to terminal input changes
     const inputSub = this.commandTracker.getCurrentInput().subscribe(
       input => {
+        console.log('App received input update:', input); // Debug
         this.currentInput = input;
       }
     );

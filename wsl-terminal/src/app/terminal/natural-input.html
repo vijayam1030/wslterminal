@@ -1,0 +1,123 @@
+<div class="natural-input-container">
+  <div class="input-header">
+    <div class="header-title">
+      <span class="icon">🗣️</span>
+      <span>Natural Language Terminal</span>
+    </div>
+    <div class="header-subtitle">Describe what you want to do in plain English</div>
+  </div>
+
+  <div class="input-section">
+    <div class="input-wrapper">
+      <textarea 
+        #naturalInput
+        [(ngModel)]="currentInput"
+        (keydown)="handleKeyDown($event)"
+        (input)="onInputChange()"
+        placeholder="Type what you want to do... (e.g., 'list all files', 'create a folder called docs', 'find text files')"
+        class="natural-input"
+        rows="3"
+        [disabled]="isProcessing">
+      </textarea>
+      
+      <div class="input-actions">
+        <button 
+          class="translate-btn"
+          [disabled]="!currentInput.trim() || isProcessing"
+          (click)="translateAndExecute()">
+          <span *ngIf="!isProcessing">▶️ Execute</span>
+          <span *ngIf="isProcessing" class="processing">
+            <span class="spinner"></span> Processing...
+          </span>
+        </button>
+        
+        <button 
+          class="translate-only-btn"
+          [disabled]="!currentInput.trim() || isProcessing"
+          (click)="translateOnly()">
+          🔍 Translate Only
+        </button>
+      </div>
+    </div>
+
+    <!-- Suggestions -->
+    <div class="suggestions-section" *ngIf="suggestions.length > 0 && !isProcessing">
+      <div class="suggestions-title">Suggestions:</div>
+      <div class="suggestion-chips">
+        <button 
+          *ngFor="let suggestion of suggestions" 
+          class="suggestion-chip"
+          (click)="applySuggestion(suggestion)">
+          {{ suggestion }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Command Translation -->
+    <div class="translation-section" *ngIf="lastTranslation">
+      <div class="translation-header">
+        <div class="translation-title">Command Translation</div>
+        <div class="confidence-badge" [class.high]="lastTranslation.confidence > 0.8" 
+             [class.medium]="lastTranslation.confidence > 0.5 && lastTranslation.confidence <= 0.8"
+             [class.low]="lastTranslation.confidence <= 0.5">
+          {{ (lastTranslation.confidence * 100).toFixed(0) }}% confident
+        </div>
+      </div>
+      
+      <div class="command-display">
+        <div class="command-label">Command:</div>
+        <code class="command-code">{{ lastTranslation.command }}</code>
+        <button class="copy-btn" (click)="copyCommand()" title="Copy command">📋</button>
+      </div>
+      
+      <div class="explanation">
+        <div class="explanation-label">What this does:</div>
+        <div class="explanation-text">{{ lastTranslation.explanation }}</div>
+      </div>
+
+      <div class="alternatives" *ngIf="lastTranslation.alternatives && lastTranslation.alternatives.length > 0">
+        <div class="alternatives-label">Alternative commands:</div>
+        <div class="alternatives-list">
+          <code 
+            *ngFor="let alt of lastTranslation.alternatives" 
+            class="alternative-command"
+            (click)="executeAlternative(alt)">
+            {{ alt }}
+          </code>
+        </div>
+      </div>
+
+      <div class="execution-actions" *ngIf="!executedTranslation">
+        <button class="execute-btn" (click)="executeCommand(lastTranslation.command)">
+          ✅ Execute This Command
+        </button>
+        <button class="cancel-btn" (click)="clearTranslation()">
+          ❌ Cancel
+        </button>
+      </div>
+    </div>
+
+    <!-- Examples -->
+    <div class="examples-section" *ngIf="!currentInput.trim() && !isProcessing && !lastTranslation">
+      <div class="examples-title">Try saying:</div>
+      <div class="example-grid">
+        <button 
+          *ngFor="let example of examples" 
+          class="example-item"
+          (click)="applySuggestion(example)">
+          "{{ example }}"
+        </button>
+      </div>
+    </div>
+
+    <!-- Error Display -->
+    <div class="error-section" *ngIf="lastError">
+      <div class="error-header">
+        <span class="error-icon">⚠️</span>
+        <span>Translation Error</span>
+      </div>
+      <div class="error-message">{{ lastError }}</div>
+      <button class="retry-btn" (click)="retryTranslation()">🔄 Try Again</button>
+    </div>
+  </div>
+</div>

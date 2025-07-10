@@ -82,6 +82,16 @@ Partial command: ${partialCommand}`;
     return this.generateResponse(prompt);
   }
 
+  generateCommand(prompt: string): Observable<OllamaResponse> {
+    const request: OllamaRequest = {
+      model: this.MODEL,
+      prompt,
+      stream: false
+    };
+
+    return this.http.post<OllamaResponse>(`${this.OLLAMA_URL}/api/generate`, request);
+  }
+
   private generateResponse(prompt: string): Observable<OllamaResponse> {
     const request: OllamaRequest = {
       model: this.MODEL,

@@ -33,11 +33,13 @@ export class SuggestionsPanelComponent implements OnInit, OnChanges {
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['currentInput']) {
+      console.log('Suggestions panel input changed:', changes['currentInput'].currentValue); // Debug
       this.updateSuggestions();
     }
   }
 
   private updateSuggestions() {
+    console.log('Updating suggestions for input:', this.currentInput); // Debug
     this.commandSuggestions = [];
     this.optionSuggestions = [];
     this.examples = [];
@@ -86,6 +88,13 @@ export class SuggestionsPanelComponent implements OnInit, OnChanges {
     this.hasSuggestions = this.commandSuggestions.length > 0 || 
                          this.optionSuggestions.length > 0 || 
                          this.examples.length > 0;
+    
+    console.log('Updated suggestions:', {
+      commands: this.commandSuggestions.length,
+      options: this.optionSuggestions.length,
+      examples: this.examples.length,
+      hasSuggestions: this.hasSuggestions
+    }); // Debug
   }
 
   private getCommandDescription(command: string): string {
