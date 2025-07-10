@@ -67,4 +67,8 @@ export class WebsocketService {
   disconnect() {
     this.socket.disconnect();
   }
+
+  isConnected(): boolean {
+    return this.socket.connected;
+  }
 }

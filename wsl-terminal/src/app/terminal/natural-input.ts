@@ -107,9 +107,14 @@ export class NaturalInputComponent implements OnInit {
   }
 
   executeCommand(command: string) {
-    console.log('Executing command:', command);
+    console.log('Natural Input: Executing command:', command);
     this.commandExecuted.emit(command);
     this.executedTranslation = true;
+    
+    // Show execution feedback
+    if (this.lastTranslation) {
+      this.lastTranslation.explanation = 'Executing command... check output below.';
+    }
     
     // Clear input and reset for next command
     setTimeout(() => {
@@ -117,7 +122,7 @@ export class NaturalInputComponent implements OnInit {
       this.clearTranslation();
       this.updateSuggestions();
       this.focusInput();
-    }, 1000);
+    }, 2000); // Increased delay to see execution status
   }
 
   executeAlternative(alternative: string) {

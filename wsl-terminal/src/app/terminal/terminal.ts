@@ -23,7 +23,7 @@ export class TerminalComponent implements OnInit, OnDestroy {
   @ViewChild('terminalOutput', { static: true }) terminalOutput!: ElementRef;
   
   private terminal!: Terminal;
-  isNaturalLanguageMode: boolean = true; // Default to natural language mode
+  isNaturalLanguageMode: boolean = true;
   private fitAddon!: FitAddon;
   private webLinksAddon!: WebLinksAddon;
   private searchAddon!: SearchAddon;
@@ -31,7 +31,6 @@ export class TerminalComponent implements OnInit, OnDestroy {
   currentInput: string = '';
   private cursorPosition: number = 0;
   
-  // Help panel properties
   currentCommand: string = '';
   showCommandHelp: boolean = false;
   helpPanelPosition: { top: number; left: number } = { top: 0, left: 0 };
@@ -45,13 +44,12 @@ export class TerminalComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    // Only initialize terminal if not in natural language mode
-    if (!this.isNaturalLanguageMode) {
-      this.initializeTerminal();
-      this.setupWebSocketListeners();
+    this.setupWebSocketListeners();
+    
+    if (this.isNaturalLanguageMode) {
+      this.initializeBackendConnection();
     } else {
-      // Still need to setup WebSocket listeners for natural language mode
-      this.setupWebSocketListeners();
+      this.initializeTerminal();
     }
   }
 
@@ -108,13 +106,18 @@ export class TerminalComponent implements OnInit, OnDestroy {
     }, 100);
   }
 
+  private initializeBackendConnection() {
+    console.log('Initializing backend connection for natural language mode');
+    setTimeout(() => {
+      this.websocketService.createTerminal(80, 24);
+    }, 100);
+  }
+
   private setupWebSocketListeners() {
     const outputSub = this.websocketService.getTerminalOutput().subscribe(data => {
       if (this.isNaturalLanguageMode) {
-        // In natural language mode, display output in our custom output area
         this.displayCommandOutput(data);
       } else if (this.terminal) {
-        // In terminal mode, write to xterm
         this.terminal.write(data);
       }
       this.commandTracker.trackInput(data);
@@ -140,31 +143,25 @@ export class TerminalComponent implements OnInit, OnDestroy {
   }
 
   private handleInput(data: string) {
-    // Handle Ctrl+H for help
     if (data === '\u0008') {
       this.toggleCommandHelp();
       return;
     }
 
-    // Handle tab completion - now integrated with side panel
     if (data === '\t') {
-      // Tab completion will be handled by the suggestions panel
       return;
     }
 
-    // Handle arrow keys for navigation
     if (data === '\u001b[A' || data === '\u001b[B') {
       this.websocketService.sendInput(data);
       return;
     }
 
-    // Clear on escape
     if (data === '\u001b') {
       this.hideCommandHelp();
       return;
     }
 
-    // Handle enter
     if (data === '\r') {
       this.hideCommandHelp();
       this.commandTracker.executeCommand(this.currentInput);
@@ -174,58 +171,44 @@ export class TerminalComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Handle backspace
     if (data === '\u007F') {
       if (this.currentInput.length > 0) {
         this.currentInput = this.currentInput.slice(0, -1);
         this.cursorPosition = Math.max(0, this.cursorPosition - 1);
-        console.log('After backspace:', this.currentInput); // Debug log
-        this.commandTracker.updateCurrentInput(this.currentInput); // Direct update
+        this.commandTracker.updateCurrentInput(this.currentInput);
         this.websocketService.sendInput(data);
         this.updateCommandHelp();
       }
       return;
     }
 
-    // Handle printable characters
     if (data >= ' ') {
       this.currentInput += data;
       this.cursorPosition++;
-      console.log('Current input:', this.currentInput); // Debug log
-      this.commandTracker.updateCurrentInput(this.currentInput); // Direct update
+      this.commandTracker.updateCurrentInput(this.currentInput);
       this.websocketService.sendInput(data);
       this.updateCommandHelp();
       return;
     }
 
-    // For other control characters, just pass through
     this.websocketService.sendInput(data);
   }
 
   applySuggestion(suggestion: string) {
-    // Clear current input from terminal
     if (this.currentInput) {
-      const clearLength = this.currentInput.length;
-      // Move cursor to beginning of current input and clear it
       this.terminal.write('\r\u001b[K');
-      // Restore prompt if needed
-      // Note: This might need adjustment based on your shell prompt
     }
 
-    // Handle different types of suggestions
     const parts = this.currentInput.trim().split(/\s+/);
     const isFirstWord = parts.length <= 1;
     
     if (isFirstWord) {
-      // Complete command
       this.currentInput = suggestion + ' ';
       this.websocketService.sendInput(suggestion + ' ');
     } else if (suggestion.startsWith('-')) {
-      // Add option/flag
       this.currentInput += suggestion + ' ';
       this.websocketService.sendInput(suggestion + ' ');
     } else {
-      // Replace last word with suggestion
       parts[parts.length - 1] = suggestion;
       const newInput = parts.join(' ') + ' ';
       const toSend = newInput.substring(this.currentInput.length);
@@ -251,7 +234,7 @@ export class TerminalComponent implements OnInit, OnDestroy {
       } else {
         this.hideCommandHelp();
       }
-    }, 300); // Reduced delay to 300ms for faster help display
+    }, 300);
   }
 
   private updateHelpPanelPosition() {
@@ -288,10 +271,8 @@ export class TerminalComponent implements OnInit, OnDestroy {
     this.isNaturalLanguageMode = naturalMode;
     
     if (!naturalMode && !this.terminal) {
-      // Initialize terminal when switching to terminal mode
       setTimeout(() => {
         this.initializeTerminal();
-        this.setupWebSocketListeners();
       }, 100);
     }
   }
@@ -299,11 +280,18 @@ export class TerminalComponent implements OnInit, OnDestroy {
   executeNaturalCommand(command: string) {
     console.log('Executing natural command:', command);
     
-    // Show the command being executed
     this.displayCommandExecution(command);
     
-    // Execute the command through WebSocket
-    this.websocketService.sendInput(command + '\r');
+    if (!this.websocketService.isConnected()) {
+      console.log('WebSocket not connected, initializing...');
+      this.initializeBackendConnection();
+      
+      setTimeout(() => {
+        this.websocketService.sendInput(command + '\r');
+      }, 500);
+    } else {
+      this.websocketService.sendInput(command + '\r');
+    }
   }
 
   private displayCommandExecution(command: string) {
@@ -311,42 +299,51 @@ export class TerminalComponent implements OnInit, OnDestroy {
       const timestamp = new Date().toLocaleTimeString();
       const commandElement = document.createElement('div');
       commandElement.innerHTML = `
-        <div style="color: #7cc7ff; font-family: monospace; margin: 10px 0; padding: 10px; background: #2a2a2a; border-radius: 4px; border-left: 3px solid #7cc7ff;">
-          <div style="color: #888; font-size: 12px;">${timestamp}</div>
-          <div style="color: #98d982; margin-top: 4px;">$ ${command}</div>
+        <div style="color: #7cc7ff; font-family: 'Consolas', 'Monaco', monospace; margin: 15px 0; padding: 15px; background: #2a2a2a; border-radius: 8px; border-left: 4px solid #7cc7ff; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+          <div style="color: #888; font-size: 12px; margin-bottom: 6px;">
+            <span style="color: #ffd700;">⚡</span> Executing at ${timestamp}
+          </div>
+          <div style="color: #98d982; font-size: 14px; font-weight: 500;">$ ${command}</div>
+          <div style="color: #888; font-size: 11px; margin-top: 6px; font-style: italic;">Output will appear below...</div>
         </div>
       `;
       this.terminalOutput.nativeElement.appendChild(commandElement);
       
-      // Auto-scroll to bottom
       this.terminalOutput.nativeElement.scrollTop = this.terminalOutput.nativeElement.scrollHeight;
     }
   }
 
   private displayCommandOutput(data: string) {
-    if (this.terminalOutput) {
-      // Create output element
+    if (this.terminalOutput && data.trim()) {
+      const cleanData = data.replace(/\x1b\[[0-9;]*m/g, '');
+      
+      if (!cleanData.trim() || cleanData.includes('$') && cleanData.length < 10) {
+        return;
+      }
+      
       const outputElement = document.createElement('div');
       outputElement.style.cssText = `
         color: #e0e0e0;
-        font-family: monospace;
+        font-family: 'Consolas', 'Monaco', monospace;
         white-space: pre-wrap;
-        margin: 5px 0;
-        padding: 8px;
-        background: #1a1a1a;
-        border-radius: 4px;
-        font-size: 13px;
-        line-height: 1.4;
+        margin: 8px 0;
+        padding: 12px;
+        background: #0a0a0a;
+        border: 1px solid #333;
+        border-radius: 6px;
+        font-size: 14px;
+        line-height: 1.5;
+        border-left: 4px solid #4CAF50;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
       `;
       
-      // Clean and format the output
-      const cleanData = data.replace(/\x1b\[[0-9;]*m/g, ''); // Remove ANSI codes
       outputElement.textContent = cleanData;
       
       this.terminalOutput.nativeElement.appendChild(outputElement);
       
-      // Auto-scroll to bottom
       this.terminalOutput.nativeElement.scrollTop = this.terminalOutput.nativeElement.scrollHeight;
+      
+      console.log('Output displayed:', cleanData);
     }
   }
 
