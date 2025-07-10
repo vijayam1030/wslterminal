@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild, HostListener } from '@angular/core';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
@@ -6,11 +6,13 @@ import { SearchAddon } from '@xterm/addon-search';
 import { WebsocketService } from '../services/websocket';
 import { CommandTrackerService } from '../services/command-tracker';
 import { AutocompleteService } from '../services/autocomplete';
+import { CommandHelpService } from '../services/command-help';
+import { CommandHelpPanelComponent } from './command-help-panel';
 import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-terminal',
-  imports: [],
+  imports: [CommandHelpPanelComponent],
   templateUrl: './terminal.html',
   styleUrl: './terminal.scss'
 })
@@ -27,11 +29,18 @@ export class TerminalComponent implements OnInit, OnDestroy {
   private cursorPosition: number = 0;
   private suggestionStartCol: number = 0;
   private suggestionText: string = '';
+  
+  // Help panel properties
+  currentCommand: string = '';
+  showCommandHelp: boolean = false;
+  helpPanelPosition: { top: number; left: number } = { top: 0, left: 0 };
+  private helpTimeout: any;
 
   constructor(
     private websocketService: WebsocketService,
     private commandTracker: CommandTrackerService,
-    private autocompleteService: AutocompleteService
+    private autocompleteService: AutocompleteService,
+    private commandHelpService: CommandHelpService
   ) {}
 
   ngOnInit() {
@@ -109,6 +118,12 @@ export class TerminalComponent implements OnInit, OnDestroy {
   }
 
   private handleInput(data: string) {
+    // Handle Ctrl+H for help
+    if (data === '\u0008') {
+      this.toggleCommandHelp();
+      return;
+    }
+
     // Handle tab completion
     if (data === '\t') {
       this.handleTabCompletion();
@@ -124,12 +139,14 @@ export class TerminalComponent implements OnInit, OnDestroy {
     // Clear suggestion on escape
     if (data === '\u001b') {
       this.clearSuggestion();
+      this.hideCommandHelp();
       return;
     }
 
     // Handle enter
     if (data === '\r') {
       this.clearSuggestion();
+      this.hideCommandHelp();
       this.commandTracker.executeCommand(this.currentInput);
       this.currentInput = '';
       this.cursorPosition = 0;
@@ -144,8 +161,9 @@ export class TerminalComponent implements OnInit, OnDestroy {
         this.cursorPosition = Math.max(0, this.cursorPosition - 1);
         this.clearSuggestion();
         this.websocketService.sendInput(data);
-        // Show new suggestion after a brief delay
-        setTimeout(() => this.showSuggestion(), 50);
+        // Show new suggestion and update help immediately
+        this.showSuggestion();
+        this.updateCommandHelp();
       }
       return;
     }
@@ -156,8 +174,9 @@ export class TerminalComponent implements OnInit, OnDestroy {
       this.cursorPosition++;
       this.clearSuggestion();
       this.websocketService.sendInput(data);
-      // Show suggestion after a brief delay
-      setTimeout(() => this.showSuggestion(), 50);
+      // Show suggestion and update help immediately
+      this.showSuggestion();
+      this.updateCommandHelp();
       return;
     }
 
@@ -193,23 +212,27 @@ export class TerminalComponent implements OnInit, OnDestroy {
     }
 
     const bestMatch = this.autocompleteService.getBestMatch(this.currentInput);
-    if (bestMatch && bestMatch !== this.currentInput) {
-      const completion = this.autocompleteService.getCompletion(this.currentInput, bestMatch);
-      const suggestion = completion.substring(this.currentInput.length);
+    if (bestMatch && bestMatch !== this.currentInput.trim()) {
+      const parts = this.currentInput.trim().split(/\s+/);
+      const lastPart = parts[parts.length - 1];
       
-      if (suggestion) {
-        this.currentSuggestion = suggestion;
-        this.suggestionStartCol = this.cursorPosition;
-        this.suggestionText = suggestion;
+      // Only show suggestion if the match is longer than current input
+      if (bestMatch.startsWith(lastPart) && bestMatch.length > lastPart.length) {
+        const suggestion = bestMatch.substring(lastPart.length);
         
-        // Display suggestion in dim gray
-        const savedCursor = this.terminal.buffer.active.cursorX;
-        this.terminal.write(`\u001b[90m${suggestion}\u001b[0m`);
-        
-        // Move cursor back to original position
-        const moveBack = suggestion.length;
-        if (moveBack > 0) {
-          this.terminal.write(`\u001b[${moveBack}D`);
+        if (suggestion) {
+          this.currentSuggestion = suggestion;
+          this.suggestionStartCol = this.cursorPosition;
+          this.suggestionText = suggestion;
+          
+          // Display suggestion in dim gray immediately
+          this.terminal.write(`\u001b[90m${suggestion}\u001b[0m`);
+          
+          // Move cursor back to original position
+          const moveBack = suggestion.length;
+          if (moveBack > 0) {
+            this.terminal.write(`\u001b[${moveBack}D`);
+          }
         }
       }
     }
@@ -230,6 +253,59 @@ export class TerminalComponent implements OnInit, OnDestroy {
       this.currentSuggestion = '';
       this.suggestionText = '';
       this.suggestionStartCol = 0;
+    }
+  }
+
+  private updateCommandHelp() {
+    if (this.helpTimeout) {
+      clearTimeout(this.helpTimeout);
+    }
+
+    this.helpTimeout = setTimeout(() => {
+      const command = this.currentInput.trim().split(' ')[0];
+      if (command && this.commandHelpService.getCommandHelp(command)) {
+        this.currentCommand = command;
+        this.updateHelpPanelPosition();
+        this.showCommandHelp = true;
+      } else {
+        this.hideCommandHelp();
+      }
+    }, 300); // Reduced delay to 300ms for faster help display
+  }
+
+  private updateHelpPanelPosition() {
+    const terminalRect = this.terminalContainer.nativeElement.getBoundingClientRect();
+    this.helpPanelPosition = {
+      top: terminalRect.top + 50,
+      left: terminalRect.right + 10
+    };
+  }
+
+  private toggleCommandHelp() {
+    if (this.showCommandHelp) {
+      this.hideCommandHelp();
+    } else {
+      const command = this.currentInput.trim().split(' ')[0];
+      if (command && this.commandHelpService.getCommandHelp(command)) {
+        this.currentCommand = command;
+        this.updateHelpPanelPosition();
+        this.showCommandHelp = true;
+      }
+    }
+  }
+
+  hideCommandHelp() {
+    this.showCommandHelp = false;
+    if (this.helpTimeout) {
+      clearTimeout(this.helpTimeout);
+    }
+  }
+
+  @HostListener('window:resize', ['$event'])
+  onWindowResize(event: any) {
+    this.fitAddon.fit();
+    if (this.showCommandHelp) {
+      this.updateHelpPanelPosition();
     }
   }
 }

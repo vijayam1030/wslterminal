@@ -1,1 +1,7 @@
 <div #terminalContainer class="terminal-container"></div>
+<app-command-help-panel 
+  [command]="currentCommand"
+  [showHelp]="showCommandHelp"
+  [panelPosition]="helpPanelPosition"
+  (hideHelpEvent)="hideCommandHelp()">
+</app-command-help-panel>

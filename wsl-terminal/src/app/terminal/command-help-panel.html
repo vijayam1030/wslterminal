@@ -1,0 +1,48 @@
+<div class="command-help-panel" *ngIf="showHelp" [style.top.px]="panelPosition.top" [style.left.px]="panelPosition.left">
+  <div class="help-header">
+    <div class="help-title">{{ commandSummary }}</div>
+    <button class="close-btn" (click)="hideHelp()">×</button>
+  </div>
+  
+  <div class="help-content">
+    <div class="help-section" *ngIf="quickOptions.length > 0">
+      <div class="section-title">Common Options</div>
+      <div class="option-item" *ngFor="let option of quickOptions">
+        <span class="option-flag">{{ option.flag }}</span>
+        <span class="option-desc">{{ option.description }}</span>
+      </div>
+      <div class="more-options" *ngIf="hasMoreOptions" (click)="showAllOptions()">
+        <span>{{ remainingOptionsCount }} more options...</span>
+      </div>
+    </div>
+    
+    <div class="help-section" *ngIf="examples.length > 0">
+      <div class="section-title">Examples</div>
+      <div class="example-item" *ngFor="let example of examples">
+        <code>{{ example }}</code>
+      </div>
+    </div>
+    
+    <div class="help-section" *ngIf="alternatives.length > 0">
+      <div class="section-title">Alternatives</div>
+      <div class="alternatives-list">
+        <span class="alternative-item" *ngFor="let alt of alternatives">{{ alt }}</span>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Expanded options panel -->
+  <div class="expanded-options" *ngIf="showingAllOptions">
+    <div class="section-title">All Options</div>
+    <div class="scrollable-options">
+      <div class="option-item" *ngFor="let option of allOptions">
+        <span class="option-flag">{{ option.flag }}</span>
+        <span class="option-desc">{{ option.description }}</span>
+        <code class="option-example" *ngIf="option.example">{{ option.example }}</code>
+      </div>
+    </div>
+    <div class="collapse-options" (click)="showingAllOptions = false">
+      <span>Show less</span>
+    </div>
+  </div>
+</div>

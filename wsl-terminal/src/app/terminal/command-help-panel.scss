@@ -1,0 +1,223 @@
+.command-help-panel {
+  position: fixed;
+  background: #2d2d2d;
+  border: 1px solid #555;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  max-width: 400px;
+  min-width: 300px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 12px;
+  color: #e0e0e0;
+  
+  .help-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: #3a3a3a;
+    border-bottom: 1px solid #555;
+    border-radius: 8px 8px 0 0;
+    
+    .help-title {
+      font-weight: bold;
+      color: #7cc7ff;
+      font-size: 13px;
+    }
+    
+    .close-btn {
+      background: none;
+      border: none;
+      color: #999;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 0;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      &:hover {
+        color: #fff;
+        background: #555;
+        border-radius: 3px;
+      }
+    }
+  }
+  
+  .help-content {
+    padding: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+    
+    .help-section {
+      margin-bottom: 16px;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+      
+      .section-title {
+        font-size: 11px;
+        color: #ffd700;
+        font-weight: bold;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      
+      .option-item {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 4px;
+        padding: 2px 0;
+        
+        .option-flag {
+          color: #7cc7ff;
+          font-weight: bold;
+          min-width: 60px;
+          margin-right: 8px;
+        }
+        
+        .option-desc {
+          color: #e0e0e0;
+          line-height: 1.4;
+          flex: 1;
+        }
+        
+        .option-example {
+          display: block;
+          margin-top: 2px;
+          color: #98d982;
+          font-size: 11px;
+          font-style: italic;
+        }
+      }
+      
+      .example-item {
+        margin-bottom: 4px;
+        
+        code {
+          background: #1a1a1a;
+          padding: 2px 6px;
+          border-radius: 3px;
+          color: #98d982;
+          font-size: 11px;
+        }
+      }
+      
+      .alternatives-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        
+        .alternative-item {
+          background: #444;
+          padding: 2px 8px;
+          border-radius: 12px;
+          color: #ffa500;
+          font-size: 11px;
+          border: 1px solid #666;
+        }
+      }
+      
+      .more-options {
+        margin-top: 6px;
+        cursor: pointer;
+        color: #7cc7ff;
+        font-size: 11px;
+        text-decoration: underline;
+        
+        &:hover {
+          color: #a6d5ff;
+        }
+      }
+    }
+  }
+  
+  .expanded-options {
+    border-top: 1px solid #555;
+    padding: 12px;
+    background: #262626;
+    border-radius: 0 0 8px 8px;
+    
+    .section-title {
+      font-size: 11px;
+      color: #ffd700;
+      font-weight: bold;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .scrollable-options {
+      max-height: 200px;
+      overflow-y: auto;
+      margin-bottom: 8px;
+      
+      .option-item {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 8px;
+        padding: 6px 8px;
+        background: #1a1a1a;
+        border-radius: 4px;
+        border-left: 3px solid #7cc7ff;
+        
+        .option-flag {
+          color: #7cc7ff;
+          font-weight: bold;
+          margin-bottom: 2px;
+        }
+        
+        .option-desc {
+          color: #e0e0e0;
+          line-height: 1.4;
+          margin-bottom: 4px;
+        }
+        
+        .option-example {
+          background: #0a0a0a;
+          padding: 3px 6px;
+          border-radius: 3px;
+          color: #98d982;
+          font-size: 10px;
+          align-self: flex-start;
+        }
+      }
+    }
+    
+    .collapse-options {
+      cursor: pointer;
+      color: #7cc7ff;
+      font-size: 11px;
+      text-decoration: underline;
+      text-align: center;
+      
+      &:hover {
+        color: #a6d5ff;
+      }
+    }
+  }
+  
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #1a1a1a;
+    border-radius: 3px;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 3px;
+    
+    &:hover {
+      background: #666;
+    }
+  }
+}
