@@ -46,7 +46,9 @@ io.on('connection', (socket) => {
     logs[socket.id] = [];
 
     terminal.on('data', (data) => {
-      logs[socket.id].push(data);
+      if (logs[socket.id]) {
+        logs[socket.id].push(data);
+      }
       socket.emit('terminal-output', data);
     });
 

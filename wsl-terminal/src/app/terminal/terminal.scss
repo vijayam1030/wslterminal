@@ -120,3 +120,51 @@
 .terminal-mode {
   display: block;
 }
+
+.natural-content {
+  height: calc(100vh - 140px);
+  display: flex;
+  flex-direction: column;
+  
+  .tab-navigation {
+    display: flex;
+    background: #2a2a2a;
+    border-bottom: 2px solid #333;
+    padding: 0 20px;
+    
+    .tab-btn {
+      padding: 12px 20px;
+      background: none;
+      border: none;
+      color: #888;
+      cursor: pointer;
+      font-size: 14px;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s ease;
+      
+      &:hover {
+        color: #ccc;
+        background: #333;
+      }
+      
+      &.active {
+        color: #7cc7ff;
+        border-bottom-color: #7cc7ff;
+        background: #1a1a1a;
+      }
+    }
+  }
+  
+  .tab-content {
+    flex: 1;
+    overflow: hidden;
+    
+    .terminal-output {
+      height: 100%;
+      margin: 0;
+      border-radius: 0;
+      border: none;
+      border-top: 2px solid #333;
+    }
+  }
+}

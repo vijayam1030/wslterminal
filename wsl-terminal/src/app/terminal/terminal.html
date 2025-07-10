@@ -1,7 +1,8 @@
 <!-- Natural Language Input Mode -->
 <app-natural-input 
   *ngIf="isNaturalLanguageMode"
-  (commandExecuted)="executeNaturalCommand($event)">
+  (commandExecuted)="executeNaturalCommand($event)"
+  #naturalInput>
 </app-natural-input>
 
 <!-- Traditional Terminal Mode -->
@@ -34,7 +35,35 @@
   </button>
 </div>
 
-<!-- Terminal Output Display (always visible) -->
-<div class="terminal-output" #terminalOutput>
-  <!-- This will show command outputs in natural language mode -->
+<!-- Natural Language Mode Content -->
+<div class="natural-content" *ngIf="isNaturalLanguageMode">
+  <!-- Tab Navigation -->
+  <div class="tab-navigation">
+    <button 
+      class="tab-btn"
+      [class.active]="activeTab === 'output'"
+      (click)="switchTab('output')">
+      📺 Live Output
+    </button>
+    <button 
+      class="tab-btn"
+      [class.active]="activeTab === 'history'"
+      (click)="switchTab('history')">
+      📜 History ({{ commandHistory.length }})
+    </button>
+  </div>
+
+  <!-- Tab Content -->
+  <div class="tab-content">
+    <!-- Live Output Tab -->
+    <div class="terminal-output" #terminalOutput *ngIf="activeTab === 'output'">
+      <!-- This will show current command output -->
+    </div>
+    
+    <!-- History Tab -->
+    <app-command-history 
+      *ngIf="activeTab === 'history'"
+      [history]="commandHistory">
+    </app-command-history>
+  </div>
 </div>

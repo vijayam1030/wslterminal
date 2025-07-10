@@ -9,18 +9,20 @@ import { AutocompleteService } from '../services/autocomplete';
 import { CommandHelpService } from '../services/command-help';
 import { CommandHelpPanelComponent } from './command-help-panel';
 import { NaturalInputComponent } from './natural-input';
+import { CommandHistoryComponent, CommandHistoryItem } from './command-history';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-terminal',
-  imports: [CommandHelpPanelComponent, NaturalInputComponent, CommonModule],
+  imports: [CommandHelpPanelComponent, NaturalInputComponent, CommandHistoryComponent, CommonModule],
   templateUrl: './terminal.html',
   styleUrl: './terminal.scss'
 })
 export class TerminalComponent implements OnInit, OnDestroy {
   @ViewChild('terminalContainer', { static: false }) terminalContainer!: ElementRef;
-  @ViewChild('terminalOutput', { static: true }) terminalOutput!: ElementRef;
+  @ViewChild('terminalOutput', { static: false }) terminalOutput!: ElementRef;
+  @ViewChild('naturalInput', { static: false }) naturalInput!: NaturalInputComponent;
   
   private terminal!: Terminal;
   isNaturalLanguageMode: boolean = true;
@@ -35,6 +37,11 @@ export class TerminalComponent implements OnInit, OnDestroy {
   showCommandHelp: boolean = false;
   helpPanelPosition: { top: number; left: number } = { top: 0, left: 0 };
   private helpTimeout: any;
+  
+  // Tab and history management
+  activeTab: 'output' | 'history' = 'output';
+  commandHistory: CommandHistoryItem[] = [];
+  private currentHistoryItem: CommandHistoryItem | null = null;
 
   constructor(
     private websocketService: WebsocketService,
@@ -115,6 +122,7 @@ export class TerminalComponent implements OnInit, OnDestroy {
 
   private setupWebSocketListeners() {
     const outputSub = this.websocketService.getTerminalOutput().subscribe(data => {
+      console.log('WebSocket data received:', data);
       if (this.isNaturalLanguageMode) {
         this.displayCommandOutput(data);
       } else if (this.terminal) {
@@ -280,7 +288,23 @@ export class TerminalComponent implements OnInit, OnDestroy {
   executeNaturalCommand(command: string) {
     console.log('Executing natural command:', command);
     
+    // Get natural language context from the input component
+    const naturalLanguage = this.naturalInput?.currentInput || '';
+    
+    // Create history item
+    this.currentHistoryItem = {
+      id: Date.now().toString(),
+      timestamp: new Date(),
+      naturalLanguage: naturalLanguage,
+      command: command,
+      output: '',
+      executionTime: Date.now()
+    };
+    
     this.displayCommandExecution(command);
+    
+    // Auto-switch to output tab when executing
+    this.activeTab = 'output';
     
     if (!this.websocketService.isConnected()) {
       console.log('WebSocket not connected, initializing...');
@@ -295,7 +319,11 @@ export class TerminalComponent implements OnInit, OnDestroy {
   }
 
   private displayCommandExecution(command: string) {
-    if (this.terminalOutput) {
+    const outputElement = document.querySelector('.terminal-output') as HTMLElement;
+    if (outputElement) {
+      // Clear previous output for new command
+      outputElement.innerHTML = '';
+      
       const timestamp = new Date().toLocaleTimeString();
       const commandElement = document.createElement('div');
       commandElement.innerHTML = `
@@ -307,16 +335,22 @@ export class TerminalComponent implements OnInit, OnDestroy {
           <div style="color: #888; font-size: 11px; margin-top: 6px; font-style: italic;">Output will appear below...</div>
         </div>
       `;
-      this.terminalOutput.nativeElement.appendChild(commandElement);
-      
-      this.terminalOutput.nativeElement.scrollTop = this.terminalOutput.nativeElement.scrollHeight;
+      outputElement.appendChild(commandElement);
+      outputElement.scrollTop = outputElement.scrollHeight;
     }
   }
 
   private displayCommandOutput(data: string) {
-    if (this.terminalOutput && data.trim()) {
-      // Remove ANSI escape sequences and terminal prompts
-      let cleanData = data.replace(/\x1b\[[0-9;]*m/g, '');
+    if (data.trim()) {
+      // Remove ANSI escape sequences and terminal control sequences
+      let cleanData = data
+        .replace(/\x1b\[[0-9;]*m/g, '')           // Color codes
+        .replace(/\x1b\[[?][0-9]*[lh]/g, '')      // Bracketed paste mode [?2004l/h
+        .replace(/\x1b\[[0-9]*[ABCD]/g, '')       // Cursor movement
+        .replace(/\x1b\[[0-9]*[JK]/g, '')         // Clear sequences
+        .replace(/\x1b\[[0-9]*[~]/g, '')          // Other sequences
+        .replace(/\x1b\]0;.*?\x07/g, '')          // Window title sequences
+        .replace(/\r/g, '');                      // Remove carriage returns
       
       // Remove common terminal prompts (user@host:path$ format)
       cleanData = cleanData.replace(/^[^@]+@[^:]+:[^$]*\$\s*/gm, '');
@@ -326,29 +360,69 @@ export class TerminalComponent implements OnInit, OnDestroy {
         return;
       }
       
-      const outputElement = document.createElement('div');
-      outputElement.style.cssText = `
-        color: #e0e0e0;
-        font-family: 'Consolas', 'Monaco', monospace;
-        white-space: pre-wrap;
-        margin: 8px 0;
-        padding: 12px;
-        background: #0a0a0a;
-        border: 1px solid #333;
-        border-radius: 6px;
-        font-size: 14px;
-        line-height: 1.5;
-        border-left: 4px solid #4CAF50;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-      `;
+      // Add to current history item
+      if (this.currentHistoryItem) {
+        this.currentHistoryItem.output += cleanData + '\n';
+      }
       
-      outputElement.textContent = cleanData;
+      // Always display in live output - find the terminal output element
+      const outputElement = document.querySelector('.terminal-output') as HTMLElement;
+      if (outputElement && this.activeTab === 'output') {
+        const dataElement = document.createElement('div');
+        dataElement.style.cssText = `
+          color: #e0e0e0;
+          font-family: 'Consolas', 'Monaco', monospace;
+          white-space: pre-wrap;
+          margin: 8px 0;
+          padding: 12px;
+          background: #0a0a0a;
+          border: 1px solid #333;
+          border-radius: 6px;
+          font-size: 14px;
+          line-height: 1.5;
+          border-left: 4px solid #4CAF50;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        `;
+        
+        dataElement.textContent = cleanData;
+        outputElement.appendChild(dataElement);
+        outputElement.scrollTop = outputElement.scrollHeight;
+      }
       
-      this.terminalOutput.nativeElement.appendChild(outputElement);
+      console.log('Output received:', cleanData);
+    }
+  }
+
+  switchTab(tab: 'output' | 'history') {
+    this.activeTab = tab;
+    
+    // When switching to history, finalize current command if exists
+    if (tab === 'history' && this.currentHistoryItem) {
+      this.finalizeCurrentHistoryItem();
+    }
+  }
+  
+  private finalizeCurrentHistoryItem() {
+    if (this.currentHistoryItem) {
+      if (this.currentHistoryItem.executionTime) {
+        this.currentHistoryItem.executionTime = Date.now() - this.currentHistoryItem.executionTime;
+      }
       
-      this.terminalOutput.nativeElement.scrollTop = this.terminalOutput.nativeElement.scrollHeight;
+      // Add to history and clear current
+      this.commandHistory.unshift(this.currentHistoryItem);
+      this.currentHistoryItem = null;
       
-      console.log('Output displayed:', cleanData);
+      // Keep only last 50 commands
+      if (this.commandHistory.length > 50) {
+        this.commandHistory = this.commandHistory.slice(0, 50);
+      }
+    }
+  }
+  
+  // Update executeNaturalCommand to store natural language context
+  setNaturalLanguageContext(naturalLanguage: string) {
+    if (this.currentHistoryItem) {
+      this.currentHistoryItem.naturalLanguage = naturalLanguage;
     }
   }
 
