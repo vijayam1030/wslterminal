@@ -42,6 +42,8 @@ export class TerminalComponent implements OnInit, OnDestroy {
   activeTab: 'output' | 'history' = 'output';
   commandHistory: CommandHistoryItem[] = [];
   private currentHistoryItem: CommandHistoryItem | null = null;
+  private outputBuffer: string = '';
+  private outputTimer: any;
 
   constructor(
     private websocketService: WebsocketService,
@@ -319,6 +321,12 @@ export class TerminalComponent implements OnInit, OnDestroy {
   }
 
   private displayCommandExecution(command: string) {
+    // Clear any pending output buffer
+    if (this.outputTimer) {
+      clearTimeout(this.outputTimer);
+    }
+    this.outputBuffer = '';
+    
     const outputElement = document.querySelector('.terminal-output') as HTMLElement;
     if (outputElement) {
       // Clear previous output for new command
@@ -360,36 +368,60 @@ export class TerminalComponent implements OnInit, OnDestroy {
         return;
       }
       
+      // Add to output buffer
+      this.outputBuffer += cleanData;
+      
       // Add to current history item
       if (this.currentHistoryItem) {
-        this.currentHistoryItem.output += cleanData + '\n';
+        this.currentHistoryItem.output += cleanData;
       }
       
-      // Always display in live output - find the terminal output element
+      // Clear existing timer and set new one to batch output
+      if (this.outputTimer) {
+        clearTimeout(this.outputTimer);
+      }
+      
+      this.outputTimer = setTimeout(() => {
+        this.flushOutputBuffer();
+      }, 300); // Wait 300ms for more data chunks
+      
+      console.log('Output buffered:', cleanData);
+    }
+  }
+  
+  private flushOutputBuffer() {
+    if (this.outputBuffer.trim()) {
       const outputElement = document.querySelector('.terminal-output') as HTMLElement;
       if (outputElement && this.activeTab === 'output') {
-        const dataElement = document.createElement('div');
-        dataElement.style.cssText = `
-          color: #e0e0e0;
-          font-family: 'Consolas', 'Monaco', monospace;
-          white-space: pre-wrap;
-          margin: 8px 0;
-          padding: 12px;
-          background: #0a0a0a;
-          border: 1px solid #333;
-          border-radius: 6px;
-          font-size: 14px;
-          line-height: 1.5;
-          border-left: 4px solid #4CAF50;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        `;
+        // Find existing output container or create new one
+        let outputContainer = outputElement.querySelector('.output-container') as HTMLElement;
+        if (!outputContainer) {
+          outputContainer = document.createElement('div');
+          outputContainer.className = 'output-container';
+          outputContainer.style.cssText = `
+            color: #e0e0e0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            white-space: pre-wrap;
+            margin: 8px 0;
+            padding: 12px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.5;
+            border-left: 4px solid #4CAF50;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          `;
+          outputElement.appendChild(outputContainer);
+        }
         
-        dataElement.textContent = cleanData;
-        outputElement.appendChild(dataElement);
+        // Append buffered content to existing container
+        outputContainer.textContent += this.outputBuffer;
         outputElement.scrollTop = outputElement.scrollHeight;
       }
       
-      console.log('Output received:', cleanData);
+      console.log('Output flushed:', this.outputBuffer);
+      this.outputBuffer = ''; // Clear buffer
     }
   }
 
