@@ -315,9 +315,14 @@ export class TerminalComponent implements OnInit, OnDestroy {
 
   private displayCommandOutput(data: string) {
     if (this.terminalOutput && data.trim()) {
-      const cleanData = data.replace(/\x1b\[[0-9;]*m/g, '');
+      // Remove ANSI escape sequences and terminal prompts
+      let cleanData = data.replace(/\x1b\[[0-9;]*m/g, '');
       
-      if (!cleanData.trim() || cleanData.includes('$') && cleanData.length < 10) {
+      // Remove common terminal prompts (user@host:path$ format)
+      cleanData = cleanData.replace(/^[^@]+@[^:]+:[^$]*\$\s*/gm, '');
+      
+      // Skip if empty after cleaning or just prompt characters
+      if (!cleanData.trim() || cleanData.match(/^[\s$~]*$/)) {
         return;
       }
       
