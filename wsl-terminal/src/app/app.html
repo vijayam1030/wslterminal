@@ -1,0 +1,58 @@
+<mat-sidenav-container class="terminal-container">
+  <mat-sidenav #sidenav mode="side" opened position="end" class="ai-sidebar">
+    <div class="sidebar-header">
+      <h3>AI Assistant</h3>
+      <button mat-icon-button (click)="sidenav.toggle()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    <div class="sidebar-content">
+      <mat-accordion>
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              Explain Command
+              @if (aiSuggestions.loading) {
+                <mat-spinner diameter="16" class="loading-spinner"></mat-spinner>
+              }
+            </mat-panel-title>
+          </mat-expansion-panel-header>
+          <div class="explanation-content">
+            <p [innerHTML]="aiSuggestions.explanation || 'Select a command to get detailed explanations'"></p>
+          </div>
+        </mat-expansion-panel>
+        
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title>Show Options</mat-panel-title>
+          </mat-expansion-panel-header>
+          <div class="options-content">
+            <p [innerHTML]="aiSuggestions.options || 'Available flags and options will appear here'"></p>
+          </div>
+        </mat-expansion-panel>
+        
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title>Suggest Alternatives</mat-panel-title>
+          </mat-expansion-panel-header>
+          <div class="alternatives-content">
+            <p [innerHTML]="aiSuggestions.alternatives || 'Safer and more efficient alternatives will be suggested'"></p>
+          </div>
+        </mat-expansion-panel>
+      </mat-accordion>
+    </div>
+  </mat-sidenav>
+  
+  <mat-sidenav-content class="main-content">
+    <div class="terminal-header">
+      <h1>WSL Terminal</h1>
+      <button mat-icon-button (click)="sidenav.toggle()" class="sidebar-toggle">
+        <mat-icon>assistant</mat-icon>
+      </button>
+    </div>
+    <app-terminal class="terminal-wrapper"></app-terminal>
+  </mat-sidenav-content>
+</mat-sidenav-container>
+
+
+<router-outlet />
