@@ -5,6 +5,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { SearchAddon } from '@xterm/addon-search';
 import { WebsocketService } from '../services/websocket';
 import { CommandTrackerService } from '../services/command-tracker';
+import { AutocompleteService } from '../services/autocomplete';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -22,10 +23,15 @@ export class TerminalComponent implements OnInit, OnDestroy {
   private searchAddon!: SearchAddon;
   private subscriptions: Subscription[] = [];
   private currentInput: string = '';
+  private currentSuggestion: string = '';
+  private cursorPosition: number = 0;
+  private suggestionStartCol: number = 0;
+  private suggestionText: string = '';
 
   constructor(
     private websocketService: WebsocketService,
-    private commandTracker: CommandTrackerService
+    private commandTracker: CommandTrackerService,
+    private autocompleteService: AutocompleteService
   ) {}
 
   ngOnInit() {
@@ -65,16 +71,7 @@ export class TerminalComponent implements OnInit, OnDestroy {
     this.fitAddon.fit();
 
     this.terminal.onData(data => {
-      this.websocketService.sendInput(data);
-      
-      if (data === '\r') {
-        this.commandTracker.executeCommand(this.currentInput);
-        this.currentInput = '';
-      } else if (data === '\u007F') {
-        this.currentInput = this.currentInput.slice(0, -1);
-      } else if (data >= ' ') {
-        this.currentInput += data;
-      }
+      this.handleInput(data);
     });
 
     this.terminal.onResize(({ cols, rows }) => {
@@ -109,5 +106,130 @@ export class TerminalComponent implements OnInit, OnDestroy {
     });
 
     this.subscriptions.push(outputSub, exitSub, connectionSub);
+  }
+
+  private handleInput(data: string) {
+    // Handle tab completion
+    if (data === '\t') {
+      this.handleTabCompletion();
+      return;
+    }
+
+    // Handle arrow keys for navigation
+    if (data === '\u001b[A' || data === '\u001b[B') {
+      this.websocketService.sendInput(data);
+      return;
+    }
+
+    // Clear suggestion on escape
+    if (data === '\u001b') {
+      this.clearSuggestion();
+      return;
+    }
+
+    // Handle enter
+    if (data === '\r') {
+      this.clearSuggestion();
+      this.commandTracker.executeCommand(this.currentInput);
+      this.currentInput = '';
+      this.cursorPosition = 0;
+      this.websocketService.sendInput(data);
+      return;
+    }
+
+    // Handle backspace
+    if (data === '\u007F') {
+      if (this.currentInput.length > 0) {
+        this.currentInput = this.currentInput.slice(0, -1);
+        this.cursorPosition = Math.max(0, this.cursorPosition - 1);
+        this.clearSuggestion();
+        this.websocketService.sendInput(data);
+        // Show new suggestion after a brief delay
+        setTimeout(() => this.showSuggestion(), 50);
+      }
+      return;
+    }
+
+    // Handle printable characters
+    if (data >= ' ') {
+      this.currentInput += data;
+      this.cursorPosition++;
+      this.clearSuggestion();
+      this.websocketService.sendInput(data);
+      // Show suggestion after a brief delay
+      setTimeout(() => this.showSuggestion(), 50);
+      return;
+    }
+
+    // For other control characters, just pass through
+    this.websocketService.sendInput(data);
+  }
+
+  private handleTabCompletion() {
+    const bestMatch = this.autocompleteService.getBestMatch(this.currentInput);
+    if (bestMatch) {
+      const completion = this.autocompleteService.getCompletion(this.currentInput, bestMatch);
+      const toAdd = completion.substring(this.currentInput.length);
+      
+      if (toAdd) {
+        this.currentInput = completion;
+        this.cursorPosition = completion.length;
+        this.clearSuggestion();
+        
+        // Send the completion to the terminal
+        this.websocketService.sendInput(toAdd);
+        
+        // Add space after completion
+        this.currentInput += ' ';
+        this.cursorPosition++;
+        this.websocketService.sendInput(' ');
+      }
+    }
+  }
+
+  private showSuggestion() {
+    if (!this.currentInput.trim()) {
+      return;
+    }
+
+    const bestMatch = this.autocompleteService.getBestMatch(this.currentInput);
+    if (bestMatch && bestMatch !== this.currentInput) {
+      const completion = this.autocompleteService.getCompletion(this.currentInput, bestMatch);
+      const suggestion = completion.substring(this.currentInput.length);
+      
+      if (suggestion) {
+        this.currentSuggestion = suggestion;
+        this.suggestionStartCol = this.cursorPosition;
+        this.suggestionText = suggestion;
+        
+        // Display suggestion in dim gray
+        const savedCursor = this.terminal.buffer.active.cursorX;
+        this.terminal.write(`\u001b[90m${suggestion}\u001b[0m`);
+        
+        // Move cursor back to original position
+        const moveBack = suggestion.length;
+        if (moveBack > 0) {
+          this.terminal.write(`\u001b[${moveBack}D`);
+        }
+      }
+    }
+  }
+
+  private clearSuggestion() {
+    if (this.suggestionText) {
+      // Clear the suggestion by overwriting with spaces
+      const spaces = ' '.repeat(this.suggestionText.length);
+      this.terminal.write(spaces);
+      
+      // Move cursor back
+      const moveBack = this.suggestionText.length;
+      if (moveBack > 0) {
+        this.terminal.write(`\u001b[${moveBack}D`);
+      }
+      
+      this.currentSuggestion = '';
+      this.suggestionText = '';
+      this.suggestionStartCol = 0;
+    }
   }
 }
