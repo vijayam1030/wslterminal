@@ -1,4 +1,11 @@
 <div #terminalContainer class="terminal-container"></div>
+
+<app-suggestions-panel
+  [currentInput]="currentInput"
+  [showSuggestions]="true"
+  (suggestionSelected)="applySuggestion($event)">
+</app-suggestions-panel>
+
 <app-command-help-panel 
   [command]="currentCommand"
   [showHelp]="showCommandHelp"

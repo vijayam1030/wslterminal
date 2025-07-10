@@ -8,11 +8,12 @@ import { CommandTrackerService } from '../services/command-tracker';
 import { AutocompleteService } from '../services/autocomplete';
 import { CommandHelpService } from '../services/command-help';
 import { CommandHelpPanelComponent } from './command-help-panel';
+import { SuggestionsPanelComponent } from './suggestions-panel';
 import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-terminal',
-  imports: [CommandHelpPanelComponent],
+  imports: [CommandHelpPanelComponent, SuggestionsPanelComponent],
   templateUrl: './terminal.html',
   styleUrl: './terminal.scss'
 })
@@ -24,11 +25,8 @@ export class TerminalComponent implements OnInit, OnDestroy {
   private webLinksAddon!: WebLinksAddon;
   private searchAddon!: SearchAddon;
   private subscriptions: Subscription[] = [];
-  private currentInput: string = '';
-  private currentSuggestion: string = '';
+  currentInput: string = '';
   private cursorPosition: number = 0;
-  private suggestionStartCol: number = 0;
-  private suggestionText: string = '';
   
   // Help panel properties
   currentCommand: string = '';
@@ -124,9 +122,9 @@ export class TerminalComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Handle tab completion
+    // Handle tab completion - now integrated with side panel
     if (data === '\t') {
-      this.handleTabCompletion();
+      // Tab completion will be handled by the suggestions panel
       return;
     }
 
@@ -136,16 +134,14 @@ export class TerminalComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Clear suggestion on escape
+    // Clear on escape
     if (data === '\u001b') {
-      this.clearSuggestion();
       this.hideCommandHelp();
       return;
     }
 
     // Handle enter
     if (data === '\r') {
-      this.clearSuggestion();
       this.hideCommandHelp();
       this.commandTracker.executeCommand(this.currentInput);
       this.currentInput = '';
@@ -159,10 +155,7 @@ export class TerminalComponent implements OnInit, OnDestroy {
       if (this.currentInput.length > 0) {
         this.currentInput = this.currentInput.slice(0, -1);
         this.cursorPosition = Math.max(0, this.cursorPosition - 1);
-        this.clearSuggestion();
         this.websocketService.sendInput(data);
-        // Show new suggestion and update help immediately
-        this.showSuggestion();
         this.updateCommandHelp();
       }
       return;
@@ -172,10 +165,7 @@ export class TerminalComponent implements OnInit, OnDestroy {
     if (data >= ' ') {
       this.currentInput += data;
       this.cursorPosition++;
-      this.clearSuggestion();
       this.websocketService.sendInput(data);
-      // Show suggestion and update help immediately
-      this.showSuggestion();
       this.updateCommandHelp();
       return;
     }
@@ -184,76 +174,39 @@ export class TerminalComponent implements OnInit, OnDestroy {
     this.websocketService.sendInput(data);
   }
 
-  private handleTabCompletion() {
-    const bestMatch = this.autocompleteService.getBestMatch(this.currentInput);
-    if (bestMatch) {
-      const completion = this.autocompleteService.getCompletion(this.currentInput, bestMatch);
-      const toAdd = completion.substring(this.currentInput.length);
-      
-      if (toAdd) {
-        this.currentInput = completion;
-        this.cursorPosition = completion.length;
-        this.clearSuggestion();
-        
-        // Send the completion to the terminal
-        this.websocketService.sendInput(toAdd);
-        
-        // Add space after completion
-        this.currentInput += ' ';
-        this.cursorPosition++;
-        this.websocketService.sendInput(' ');
-      }
-    }
-  }
-
-  private showSuggestion() {
-    if (!this.currentInput.trim()) {
-      return;
+  applySuggestion(suggestion: string) {
+    // Clear current input from terminal
+    if (this.currentInput) {
+      const clearLength = this.currentInput.length;
+      // Move cursor to beginning of current input and clear it
+      this.terminal.write('\r\u001b[K');
+      // Restore prompt if needed
+      // Note: This might need adjustment based on your shell prompt
     }
 
-    const bestMatch = this.autocompleteService.getBestMatch(this.currentInput);
-    if (bestMatch && bestMatch !== this.currentInput.trim()) {
-      const parts = this.currentInput.trim().split(/\s+/);
-      const lastPart = parts[parts.length - 1];
-      
-      // Only show suggestion if the match is longer than current input
-      if (bestMatch.startsWith(lastPart) && bestMatch.length > lastPart.length) {
-        const suggestion = bestMatch.substring(lastPart.length);
-        
-        if (suggestion) {
-          this.currentSuggestion = suggestion;
-          this.suggestionStartCol = this.cursorPosition;
-          this.suggestionText = suggestion;
-          
-          // Display suggestion in dim gray immediately
-          this.terminal.write(`\u001b[90m${suggestion}\u001b[0m`);
-          
-          // Move cursor back to original position
-          const moveBack = suggestion.length;
-          if (moveBack > 0) {
-            this.terminal.write(`\u001b[${moveBack}D`);
-          }
-        }
-      }
+    // Handle different types of suggestions
+    const parts = this.currentInput.trim().split(/\s+/);
+    const isFirstWord = parts.length <= 1;
+    
+    if (isFirstWord) {
+      // Complete command
+      this.currentInput = suggestion + ' ';
+      this.websocketService.sendInput(suggestion + ' ');
+    } else if (suggestion.startsWith('-')) {
+      // Add option/flag
+      this.currentInput += suggestion + ' ';
+      this.websocketService.sendInput(suggestion + ' ');
+    } else {
+      // Replace last word with suggestion
+      parts[parts.length - 1] = suggestion;
+      const newInput = parts.join(' ') + ' ';
+      const toSend = newInput.substring(this.currentInput.length);
+      this.currentInput = newInput;
+      this.websocketService.sendInput(toSend);
     }
-  }
-
-  private clearSuggestion() {
-    if (this.suggestionText) {
-      // Clear the suggestion by overwriting with spaces
-      const spaces = ' '.repeat(this.suggestionText.length);
-      this.terminal.write(spaces);
-      
-      // Move cursor back
-      const moveBack = this.suggestionText.length;
-      if (moveBack > 0) {
-        this.terminal.write(`\u001b[${moveBack}D`);
-      }
-      
-      this.currentSuggestion = '';
-      this.suggestionText = '';
-      this.suggestionStartCol = 0;
-    }
+    
+    this.cursorPosition = this.currentInput.length;
+    this.updateCommandHelp();
   }
 
   private updateCommandHelp() {

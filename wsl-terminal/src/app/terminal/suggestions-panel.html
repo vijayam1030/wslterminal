@@ -1,0 +1,84 @@
+<div class="suggestions-panel" [class.visible]="showSuggestions">
+  <div class="panel-header">
+    <div class="panel-title">
+      <span class="icon">💡</span>
+      <span>Suggestions</span>
+    </div>
+    <div class="input-preview" *ngIf="currentInput">{{ currentInput }}</div>
+  </div>
+  
+  <div class="suggestions-content">
+    <!-- Command Suggestions -->
+    <div class="suggestion-section" *ngIf="commandSuggestions.length > 0">
+      <div class="section-title">Commands</div>
+      <div class="suggestion-list">
+        <div 
+          class="suggestion-item" 
+          *ngFor="let suggestion of commandSuggestions; let i = index"
+          [class.selected]="selectedIndex === i"
+          (click)="selectSuggestion(suggestion.completion)"
+          (mouseenter)="selectedIndex = i">
+          <div class="suggestion-main">
+            <span class="suggestion-text">{{ suggestion.completion }}</span>
+            <span class="suggestion-type">{{ suggestion.type }}</span>
+          </div>
+          <div class="suggestion-desc" *ngIf="suggestion.description">{{ suggestion.description }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Options/Flags -->
+    <div class="suggestion-section" *ngIf="optionSuggestions.length > 0">
+      <div class="section-title">Options</div>
+      <div class="suggestion-list">
+        <div 
+          class="suggestion-item" 
+          *ngFor="let option of optionSuggestions; let i = index"
+          [class.selected]="selectedIndex === (commandSuggestions.length + i)"
+          (click)="selectSuggestion(option.flag)"
+          (mouseenter)="selectedIndex = commandSuggestions.length + i">
+          <div class="suggestion-main">
+            <span class="suggestion-text">{{ option.flag }}</span>
+            <span class="suggestion-type">option</span>
+          </div>
+          <div class="suggestion-desc">{{ option.description }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Examples -->
+    <div class="suggestion-section" *ngIf="examples.length > 0">
+      <div class="section-title">Examples</div>
+      <div class="example-list">
+        <div 
+          class="example-item" 
+          *ngFor="let example of examples"
+          (click)="selectSuggestion(example)">
+          <code>{{ example }}</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- No suggestions message -->
+    <div class="no-suggestions" *ngIf="!hasSuggestions && currentInput">
+      <div class="no-suggestions-icon">🔍</div>
+      <div class="no-suggestions-text">No suggestions found</div>
+      <div class="no-suggestions-hint">Try typing a command name</div>
+    </div>
+
+    <!-- Welcome message -->
+    <div class="welcome-message" *ngIf="!currentInput">
+      <div class="welcome-icon">⌨️</div>
+      <div class="welcome-text">Start typing to see suggestions</div>
+      <div class="welcome-hint">Commands, options, and examples will appear here</div>
+    </div>
+  </div>
+
+  <div class="panel-footer" *ngIf="hasSuggestions">
+    <div class="footer-hint">
+      <span>↑↓ Navigate</span>
+      <span>Tab Accept</span>
+      <span>Click Select</span>
+    </div>
+  </div>
+</div>
