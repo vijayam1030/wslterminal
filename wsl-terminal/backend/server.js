@@ -46,6 +46,7 @@ io.on('connection', (socket) => {
     logs[socket.id] = [];
 
     terminal.on('data', (data) => {
+      console.log(`Terminal ${socket.id} output:`, JSON.stringify(data));
       if (logs[socket.id]) {
         logs[socket.id].push(data);
       }
@@ -66,9 +67,12 @@ io.on('connection', (socket) => {
   });
 
   socket.on('terminal-input', (data) => {
+    console.log(`Terminal ${socket.id} input:`, JSON.stringify(data));
     const terminal = terminals[socket.id];
     if (terminal) {
       terminal.write(data);
+    } else {
+      console.log(`No terminal found for socket ${socket.id}`);
     }
   });
 

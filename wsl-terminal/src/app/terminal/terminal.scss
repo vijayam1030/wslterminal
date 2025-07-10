@@ -84,7 +84,7 @@
   font-family: 'Consolas', 'Monaco', monospace;
   position: relative;
   
-  &:empty::before {
+  &.empty::before {
     content: "⏳ Command output will appear here...";
     color: #666;
     font-style: italic;

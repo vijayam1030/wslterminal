@@ -329,8 +329,9 @@ export class TerminalComponent implements OnInit, OnDestroy {
     
     const outputElement = document.querySelector('.terminal-output') as HTMLElement;
     if (outputElement) {
-      // Clear previous output for new command
+      // Clear previous output for new command and remove empty class
       outputElement.innerHTML = '';
+      outputElement.classList.remove('empty');
       
       const timestamp = new Date().toLocaleTimeString();
       const commandElement = document.createElement('div');
@@ -349,6 +350,8 @@ export class TerminalComponent implements OnInit, OnDestroy {
   }
 
   private displayCommandOutput(data: string) {
+    console.log('Raw data received:', JSON.stringify(data));
+    
     if (data.trim()) {
       // Remove ANSI escape sequences and terminal control sequences
       let cleanData = data
@@ -360,20 +363,25 @@ export class TerminalComponent implements OnInit, OnDestroy {
         .replace(/\x1b\]0;.*?\x07/g, '')          // Window title sequences
         .replace(/\r/g, '');                      // Remove carriage returns
       
+      console.log('After ANSI cleaning:', JSON.stringify(cleanData));
+      
       // Remove common terminal prompts (user@host:path$ format)
       cleanData = cleanData.replace(/^[^@]+@[^:]+:[^$]*\$\s*/gm, '');
       
-      // Skip if empty after cleaning or just prompt characters
-      if (!cleanData.trim() || cleanData.match(/^[\s$~]*$/)) {
+      console.log('After prompt cleaning:', JSON.stringify(cleanData));
+      
+      // Don't skip command echoes and basic output - be more permissive
+      if (!cleanData.trim()) {
+        console.log('Skipping empty output');
         return;
       }
       
-      // Add to output buffer
-      this.outputBuffer += cleanData;
+      // Add to output buffer (don't skip anything that has content)
+      this.outputBuffer += cleanData + '\n';
       
       // Add to current history item
       if (this.currentHistoryItem) {
-        this.currentHistoryItem.output += cleanData;
+        this.currentHistoryItem.output += cleanData + '\n';
       }
       
       // Clear existing timer and set new one to batch output
@@ -383,19 +391,26 @@ export class TerminalComponent implements OnInit, OnDestroy {
       
       this.outputTimer = setTimeout(() => {
         this.flushOutputBuffer();
-      }, 300); // Wait 300ms for more data chunks
+      }, 2000); // Wait even longer for complete output
       
-      console.log('Output buffered:', cleanData);
+      console.log('Output buffered. Total buffer now:', JSON.stringify(this.outputBuffer));
     }
   }
   
   private flushOutputBuffer() {
+    console.log('Flushing buffer. Buffer content:', JSON.stringify(this.outputBuffer));
+    console.log('Buffer length:', this.outputBuffer.length);
+    console.log('Active tab:', this.activeTab);
+    
     if (this.outputBuffer.trim()) {
       const outputElement = document.querySelector('.terminal-output') as HTMLElement;
+      console.log('Output element found:', !!outputElement);
+      
       if (outputElement && this.activeTab === 'output') {
         // Find existing output container or create new one
         let outputContainer = outputElement.querySelector('.output-container') as HTMLElement;
         if (!outputContainer) {
+          console.log('Creating new output container');
           outputContainer = document.createElement('div');
           outputContainer.className = 'output-container';
           outputContainer.style.cssText = `
@@ -413,15 +428,22 @@ export class TerminalComponent implements OnInit, OnDestroy {
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
           `;
           outputElement.appendChild(outputContainer);
+        } else {
+          console.log('Using existing output container');
         }
         
         // Append buffered content to existing container
         outputContainer.textContent += this.outputBuffer;
         outputElement.scrollTop = outputElement.scrollHeight;
+        console.log('Content added to container. Final content:', outputContainer.textContent);
+      } else {
+        console.log('Not adding content - element missing or wrong tab');
       }
       
       console.log('Output flushed:', this.outputBuffer);
       this.outputBuffer = ''; // Clear buffer
+    } else {
+      console.log('Buffer is empty, not flushing');
     }
   }
 
